@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "airbnb-assistant"
+version = "0.1.0"
+description = "RAG-based customer-support assistant for Airbnb listings"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Ray Li" }]
+dependencies = [
+    "langchain==0.3.25",
+    "langchain-community==0.3.24",
+    "sentence-transformers==4.1.0",
+    "faiss-cpu==1.11.0",
+    "streamlit==1.45.1",
+    "pypdf>=4.0",
+    "python-dotenv>=1.0",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+]
+
+[project.optional-dependencies]
+openai = ["openai==1.79.0", "langchain-openai>=0.2.0"]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
