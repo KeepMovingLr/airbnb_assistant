@@ -8,3 +8,6 @@ pypdf>=4.0
 python-dotenv>=1.0
 beautifulsoup4>=4.12
 lxml>=5.0
+
+# Install the local `chatbot` package from src/ (via pyproject.toml).
+.
