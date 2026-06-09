@@ -1,9 +1,23 @@
+import os
 from pathlib import Path
 
-# Paths — anchored to the current working directory, which Streamlit and
-# our scripts run from the project root. This works whether `chatbot` is
-# loaded from `src/` (local dev) or installed into site-packages (cloud).
-PROJECT_ROOT = Path.cwd()
+
+def _project_root() -> Path:
+    """Find the project root by walking up from cwd looking for pyproject.toml.
+
+    Fallbacks: env var override (PROJECT_ROOT), then cwd itself.
+    Works whether `chatbot` runs from src/ (local dev) or site-packages (cloud).
+    """
+    if env := os.environ.get("PROJECT_ROOT"):
+        return Path(env).resolve()
+    here = Path.cwd().resolve()
+    for candidate in [here, *here.parents]:
+        if (candidate / "pyproject.toml").exists():
+            return candidate
+    return here
+
+
+PROJECT_ROOT = _project_root()
 DATA_DIR = PROJECT_ROOT / "data"
 INDEX_DIR = PROJECT_ROOT / "faiss_index"
 
