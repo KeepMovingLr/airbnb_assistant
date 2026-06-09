@@ -1,8 +1,9 @@
 from pathlib import Path
 
-# Paths — anchored to the project root so they work regardless of cwd.
-# config.py lives at src/chatbot/config.py, so parents[2] is the project root.
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# Paths — anchored to the current working directory, which Streamlit and
+# our scripts run from the project root. This works whether `chatbot` is
+# loaded from `src/` (local dev) or installed into site-packages (cloud).
+PROJECT_ROOT = Path.cwd()
 DATA_DIR = PROJECT_ROOT / "data"
 INDEX_DIR = PROJECT_ROOT / "faiss_index"
 
