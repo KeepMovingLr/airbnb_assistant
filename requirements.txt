@@ -1,0 +1,10 @@
+langchain==0.3.25
+langchain-community==0.3.24
+langchain-openai>=0.2.0
+sentence-transformers==4.1.0
+faiss-cpu==1.11.0
+streamlit==1.45.1
+pypdf>=4.0
+python-dotenv>=1.0
+beautifulsoup4>=4.12
+lxml>=5.0

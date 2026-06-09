@@ -19,6 +19,6 @@ EMBED_MODEL = "thenlper/gte-small"
 # Retrieval
 RETRIEVER_K = 8
 
-# LLM (Ollama)
-LLM_MODEL = "gemma3:1b"
+# LLM (OpenAI)
+LLM_MODEL = "gpt-4o-mini"
 LLM_TEMPERATURE = 0.1

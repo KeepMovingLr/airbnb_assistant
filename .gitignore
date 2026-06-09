@@ -14,7 +14,7 @@ env/
 .env
 
 # Generated artifacts
-faiss_index/
+# faiss_index/
 
 # IDE / OS
 .idea/
