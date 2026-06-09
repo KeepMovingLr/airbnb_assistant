@@ -1,51 +1,55 @@
 # Airbnb Assistant
 
-A local Retrieval-Augmented Generation (RAG) chatbot that answers questions about Airbnb listing details and policies, grounded in your own source documents.
+A Retrieval-Augmented Generation (RAG) chatbot that answers questions about Airbnb listing details and policies, grounded in your own source documents.
 
-Built with LangChain, FAISS, Ollama (local LLM), and Streamlit.
+Built with LangChain, FAISS, OpenAI, and Streamlit. Designed to run locally and deploy to Streamlit Community Cloud.
 
 ## What it does
 
 - Reads your PDFs and text files from the `data/` folder.
-- Embeds them into a local FAISS vector index.
-- At query time, retrieves the most relevant chunks and feeds them to a local LLM (`gemma3:1b` via Ollama) to produce grounded, citation-friendly answers.
+- Embeds them into a FAISS vector index using a local sentence-transformer (`gte-small`).
+- At query time, retrieves the most relevant chunks and feeds them to OpenAI's `gpt-4o-mini` to produce grounded, citation-friendly answers.
 - Falls back to "I don't know based on the available documents" when the answer isn't in the corpus.
-- Exposes a minimal Streamlit chat UI.
+- Gates access behind a shared password (optional locally, required in production).
+- Exposes a Streamlit chat UI with sidebar, suggested questions, and source citations.
 
 ## Project structure
 
 ```
 AIRBNB_ASSISTANT/
 ├── README.md
-├── pyproject.toml          # dependencies + build config
-├── .env.example            # template for secrets (copy to .env)
+├── pyproject.toml            # build + dependency declaration
+├── requirements.txt          # mirror for Streamlit Cloud
+├── .env.example              # template for secrets (copy to .env)
 ├── .gitignore
-├── data/                   # source PDFs / .txt files (you provide)
-├── faiss_index/            # GENERATED — created by build_index.py
+├── .streamlit/
+│   └── config.toml           # theme
+├── data/                     # source PDFs / .txt files
+├── faiss_index/              # vector index (committed for deploy)
 ├── src/
 │   └── chatbot/
 │       ├── __init__.py
-│       ├── config.py       # paths, model names, k, chunk size
-│       ├── ingest.py       # load PDFs / texts / URLs → Documents
-│       ├── splitter.py     # chunk Documents
-│       ├── vectorstore.py  # build / save / load FAISS
-│       ├── llm.py          # Ollama LLM factory
-│       ├── prompts.py      # SYSTEM_TEMPLATE + PromptTemplate
-│       └── chain.py        # assemble retriever + prompt + llm
+│       ├── config.py         # paths, model names, k, chunk size
+│       ├── ingest.py         # load PDFs / texts / URLs → Documents
+│       ├── splitter.py       # chunk Documents
+│       ├── vectorstore.py    # build / save / load FAISS
+│       ├── llm.py            # OpenAI ChatOpenAI factory
+│       ├── prompts.py        # SYSTEM_TEMPLATE + PromptTemplate
+│       └── chain.py          # assemble retriever + prompt + llm
 ├── scripts/
-│   └── build_index.py      # one-off CLI: rebuild FAISS from data/
-├── app.py                  # Streamlit UI (entry point)
+│   └── build_index.py        # rebuild FAISS from data/
+├── app.py                    # Streamlit UI (entry point)
 └── tests/
-    └── test_chain.py       # sanity checks
+    └── test_chain.py
 ```
 
 ## Prerequisites
 
 - **Python 3.11+**
 - **Conda** (recommended) or any virtual environment manager
-- **Ollama** for running the local LLM — install from <https://ollama.com/download>
+- **An OpenAI API key** — sign up at <https://platform.openai.com>, add credit, and set a monthly spending limit
 
-## Setup
+## Local setup
 
 ### 1. Create the conda environment
 
@@ -56,34 +60,26 @@ conda activate airbnb-assistant
 
 ### 2. Install the project
 
-From the project root:
-
 ```bash
 pip install -e ".[dev]"
 ```
 
-This installs the project in editable mode plus dev tools (pytest, ruff).
-
-### 3. Start Ollama and pull the model
-
-In a **separate terminal** (keep it running while using the app):
+### 3. Create your `.env` file
 
 ```bash
-ollama serve
+cp .env.example .env
 ```
 
-Then in your main terminal, pull the model once:
+Then open `.env` and set:
 
-```bash
-ollama pull gemma3:1b
+```
+OPENAI_API_KEY=sk-proj-your-key-here
+APP_PASSWORD=any-string-you-pick  # optional locally; leave blank to skip the gate
 ```
 
 ### 4. Add your source documents
 
-Drop one or more files into `data/`:
-
-- `.pdf` — loaded with `PyPDFLoader` (text-based PDFs only — scanned/image PDFs won't extract).
-- `.txt` — loaded as plain UTF-8 text.
+Drop `.pdf` or `.txt` files into `data/`.
 
 ### 5. Build the vector index
 
@@ -102,7 +98,7 @@ Building FAISS index...
 Done. M embeddings saved.
 ```
 
-The index lives in `faiss_index/` (gitignored).
+The index is saved to `faiss_index/` and committed to git so deployments don't need to rebuild.
 
 ### 6. Run the chat UI
 
@@ -110,7 +106,54 @@ The index lives in `faiss_index/` (gitignored).
 streamlit run app.py
 ```
 
-Open the URL Streamlit prints (usually <http://localhost:8501>) and start asking questions.
+Open the URL Streamlit prints (usually <http://localhost:8501>). If `APP_PASSWORD` is set, you'll see a login form first.
+
+## Deployment to Streamlit Community Cloud
+
+The repo is pre-configured for one-click deploys to <https://share.streamlit.io>.
+
+### 1. Push your branch to GitHub
+
+```bash
+git push
+```
+
+### 2. Create the app on Streamlit Cloud
+
+- Go to <https://share.streamlit.io> and sign in with GitHub
+- Click **New app**
+- **Repository:** `your-username/your-repo`
+- **Branch:** `livemodel` (or whichever you deploy from)
+- **Main file path:** `app.py`
+- **Python version:** `3.11`
+
+### 3. Add secrets (Advanced settings → Secrets)
+
+Use **TOML format** (values in quotes):
+
+```toml
+OPENAI_API_KEY = "sk-proj-your-rotated-key"
+APP_PASSWORD = "pick-something-strong"
+```
+
+### 4. Click Deploy
+
+First build takes ~5 minutes (installs dependencies and your local package). Subsequent deploys are faster.
+
+### 5. Smoke-test the live URL
+
+- ✅ Login form appears
+- ✅ Wrong password rejected
+- ✅ Correct password lets you in
+- ✅ Ask a question, get an answer with sources
+
+### Cost and runtime
+
+- **Hosting:** free indefinitely on Streamlit Community Cloud. Apps sleep after **7 days with zero visitors** and wake on the next visit (~10–30s cold start).
+- **Resources:** 1 GB RAM, ~1 CPU core, 1 GB shared disk per account. Plenty for this app.
+- **LLM cost:** each chat turn with `gpt-4o-mini` costs roughly **$0.0005** (~2,000 turns per $1). The real meter is OpenAI, not Streamlit.
+- **Protect yourself:** set a hard monthly spend limit on OpenAI's billing page (e.g., $20). Keep the `APP_PASSWORD` private to avoid bot abuse.
+- **Monitor:** <https://platform.openai.com/usage> shows daily token spend.
 
 ## Usage
 
@@ -118,7 +161,8 @@ Open the URL Streamlit prints (usually <http://localhost:8501>) and start asking
 
 1. Drop the file (`.pdf` or `.txt`) into `data/`.
 2. Re-run `python scripts/build_index.py`.
-3. In the Streamlit browser tab, press `C` to clear the cache so the new index loads.
+3. Commit and push the regenerated `faiss_index/` so Streamlit Cloud picks it up.
+4. In the browser, press `C` to clear the cache.
 
 ### Adding URL sources
 
@@ -141,12 +185,18 @@ Most tunables live in `src/chatbot/config.py`:
 | `CHUNK_SIZE`, `CHUNK_OVERLAP` | Text chunk size and overlap for embedding |
 | `EMBED_MODEL` | HuggingFace sentence-transformer model |
 | `RETRIEVER_K` | How many chunks to retrieve per query |
-| `LLM_MODEL` | Ollama model name |
+| `LLM_MODEL` | OpenAI model name (default `gpt-4o-mini`) |
 | `LLM_TEMPERATURE` | LLM creativity (lower = more deterministic) |
 
 ### Changing the system prompt
 
 Edit `SYSTEM_TEMPLATE` in `src/chatbot/prompts.py` to change how the bot is instructed to behave (tone, citation style, what to do when uncertain).
+
+### Customizing the UI
+
+- **Theme colors:** `.streamlit/config.toml`
+- **Suggested starter questions:** `SUGGESTED_QUESTIONS` list at the top of `app.py`
+- **Avatars and title:** also in `app.py`
 
 ## Tests
 
@@ -159,18 +209,20 @@ pytest
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `ModuleNotFoundError: No module named 'chatbot'` | Project not installed in current env | `conda activate airbnb-assistant && pip install -e ".[dev]"` |
-| `ConnectionRefusedError` from Ollama | `ollama serve` is not running | Start it in a separate terminal |
+| `openai.AuthenticationError` | `.env` missing or wrong key | Confirm `OPENAI_API_KEY` is set; restart the app |
+| `RateLimitError: insufficient_quota` | No OpenAI credit | Add credit at <https://platform.openai.com/settings/organization/billing> |
 | `produced 0 chunks` | All source PDFs are image-only / unreadable | Use `.txt` files or text-based PDFs |
-| Streamlit shows stale answers after rebuilding index | UI is using cached chain | Press `C` in the Streamlit browser, or use menu → Clear cache |
-| Import warnings in IDE | IDE pointing at the wrong interpreter | VS Code: `Cmd+Shift+P` → "Python: Select Interpreter" → pick the `airbnb-assistant` env |
+| Streamlit shows stale answers after rebuilding index | UI is using cached chain | Press `C` in the Streamlit browser, or menu → Clear cache |
+| Streamlit Cloud build fails on `pip install` | Dependency conflict or wrong Python version | Set Python to `3.11`; check `requirements.txt` |
+| Streamlit Cloud serves stale code after a fix | pip wheel cached | Bump `version` in `pyproject.toml` and push again |
 
 ## Tech stack
 
 - [LangChain](https://www.langchain.com/) — RAG orchestration
 - [FAISS](https://github.com/facebookresearch/faiss) — vector similarity search
 - [sentence-transformers](https://www.sbert.net/) — embeddings (`thenlper/gte-small`)
-- [Ollama](https://ollama.com/) — local LLM runtime (`gemma3:1b`)
-- [Streamlit](https://streamlit.io/) — chat UI
+- [OpenAI](https://platform.openai.com/) — chat completions (`gpt-4o-mini`)
+- [Streamlit](https://streamlit.io/) — chat UI + cloud hosting
 - [pypdf](https://pypdf.readthedocs.io/) — PDF text extraction
 
 ## License
