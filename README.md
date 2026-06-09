@@ -159,12 +159,72 @@ First build takes ~5 minutes (installs dependencies and your local package). Sub
 
 ## Usage
 
-### Adding new documents
+### Updating data and redeploying
 
-1. Drop the file (`.pdf` or `.txt`) into `data/`.
-2. Re-run `python scripts/build_index.py`.
-3. Commit and push the regenerated `faiss_index/` so Streamlit Cloud picks it up.
-4. In the browser, press `C` to clear the cache.
+Anytime your source documents change (editing `data/test.txt`, adding a new file, removing one), follow this workflow to push the changes live:
+
+**1. Edit or add files in `data/`**
+
+```bash
+# Edit an existing file:
+#   open data/test.txt in your editor and save changes
+# Add a new file:
+#   drop a new .pdf or .txt into data/
+# Remove a file:
+#   rm data/old_file.txt
+```
+
+**2. Rebuild the vector index locally**
+
+```bash
+conda activate airbnb-assistant
+python scripts/build_index.py
+```
+
+Confirm the output reflects the change:
+
+```
+Loading documents...
+  loaded N documents          ← should match the number of files
+Chunking...
+  produced M chunks           ← should change if content changed
+Building FAISS index...
+Done. M embeddings saved.
+```
+
+If `produced 0 chunks`, the new file has no extractable text (image-only PDF, empty file). Fix the source and rerun.
+
+**3. Commit both `data/` and `faiss_index/`**
+
+```bash
+git add data/ faiss_index/
+git status                      # double-check no .env, no stray files
+git commit -m "Update knowledge base content"
+git push
+```
+
+The `faiss_index/` files **must** be committed — Streamlit Cloud uses the index baked into the repo. Without this step, the live app keeps using the old vectors.
+
+**4. Streamlit Cloud auto-redeploys**
+
+A push to the deployed branch triggers a fresh build within ~1 minute. Watch the **Manage app → logs** panel to confirm:
+
+- New commit hash picked up
+- `pip install` runs (cached, so fast)
+- App restarts
+
+**5. Verify on the live URL**
+
+- Open the live app
+- Ask a question whose answer depends on the new content
+- Confirm the **Sources** expander cites your updated file
+
+**6. (If needed) Clear stale cache**
+
+Streamlit's `@st.cache_resource` decorator on `init_chain()` may serve a stale chain after the redeploy. To force a fresh load:
+
+- In the browser: press `C` (Clear cache) → reload
+- Or in the Streamlit Cloud dashboard: ⋮ menu → **Reboot app**
 
 ### Adding URL sources
 
