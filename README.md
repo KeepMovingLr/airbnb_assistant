@@ -2,6 +2,8 @@
 
 A Retrieval-Augmented Generation (RAG) chatbot that answers questions about Airbnb listing details and policies, grounded in your own source documents.
 
+**🔗 Live demo:** <https://airbnb-assistant-uiuc-rooms.streamlit.app/>
+
 Built with LangChain, FAISS, OpenAI, and Streamlit. Designed to run locally and deploy to Streamlit Community Cloud.
 
 ## What it does
